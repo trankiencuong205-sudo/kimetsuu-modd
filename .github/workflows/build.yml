@@ -3,7 +3,6 @@ name: Build mod
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -19,17 +18,27 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Cài Gradle (không cần gradlew)
+      - name: Cài Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 9.2.0
 
+      - name: Giải nén dự án từ file zip trong repo
+        run: |
+          mkdir -p _proj
+          for z in *.zip; do unzip -q -o "$z" -d _proj; done
+          DIR=$(dirname "$(find _proj -name build.gradle | head -n 1)")
+          echo "Thư mục dự án: $DIR"
+          echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
+
       - name: Build
-        run: gradle build --stacktrace
+        run: |
+          cd "$PROJECT_DIR"
+          gradle build --stacktrace
 
       - name: Upload file .jar
         uses: actions/upload-artifact@v4
         with:
           name: kimetsu-jar
-          path: build/libs/*.jar
+          path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
